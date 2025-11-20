@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Wire</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #101418;
+            color: white;
+            padding: 20px;
+        }
+
+        .box {
+            background: #1b2229;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+
+        .code {
+            background: #0d1216;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: Consolas, monospace;
+            color: #7fffb9;
+        }
+
+        button {
+            padding: 6px 12px;
+            margin-top: 10px;
+            background: #00b2ff;
+            color: black;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #0090cc;
+        }
+
+        h2 {
+            color: #32d8ff;
+        }
+    </style>
+
+    <script>
+        function copyCode(id) {
+            const codeText = document.getElementById(id).innerText;
+            navigator.clipboard.writeText(codeText)
+                .then(() => alert("Copied Successfully!"))
+                .catch(() => alert("Copy Failed ❌"));
+        }
+    </script>
+
+</head>
+
+<body>
+
+    <!-- Experiment 1 -->
+    <div class="box">
+        <h2>Experiment 1 – BPSK in AWGN Channel</h2>
+        <button onclick="copyCode('exp1')">Copy Answer</button>
+        <pre class="code" id="exp1">
+clc;
+clear;
+close;
+
+m = 1e5; // number of bits per batch
+snr_DB = 0:1:20;
+
+BER = zeros(1, length(snr_DB));
+
+for j = 1:length(snr_DB)
+    n_err = 0;
+    n_bits = 0;
+    max_bits = 1e6;  // maximum bits per SNR point
+
+    while (n_err < 100 & n_bits < max_bits)
+        // generate random bits
+        inf_bits = round(rand(1, m));
+        
+        // BPSK modulation: 0 -> -1, 1 -> +1
+        x = 2*inf_bits - 1;
+        
+        // noise variance
+        N0 = 1/(10^(snr_DB(j)/10));
+        
+        // AWGN (real only for BPSK)
+        noise = sqrt(N0/2) * rand(1, length(x), "normal");
+        y = x + noise;
+        
+        // detection
+        est_bits = (y > 0);
+        
+        // count errors
+        dif = inf_bits - est_bits;
+        n_err = n_err + sum(abs(dif));
+        n_bits = n_bits + length(x);
+    end
+    
+    BER(j) = n_err / n_bits;
+end
+
+// Theoretical BER
+theoryBerAWGN = 0.5 * erfc(sqrt(10.^(snr_DB/10)));
+
+// Plot
+valid = BER > 0;
+semilogy(snr_DB(valid), BER(valid), "or", "LineWidth", 2);
+
+semilogy(snr_DB, theoryBerAWGN, "b-", "LineWidth", 2);
+legend(["AWGN simulated", "AWGN theoretical"]);
+xgrid();
+xlabel("SNR (dB)");
+ylabel("BER");
+title("BPSK in AWGN channel");
+
+    </pre>
+    </div>
+
+    <!-- Experiment 2 -->
+    <div class="box">
+        <h2>Experiment 2 – BPSK over Rayleigh Fading</h2>
+        <button onclick="copyCode('exp2')">Copy Answer</button>
+        <pre class="code" id="exp2">
+clc;
+clear;
+close;
+
+m = 1e5;
+snr_dB = 0:1:20;
+BER = zeros(1, length(snr_dB));
+
+// Gaussian generator like randn()
+function r=randn_gauss(rows, cols)
+    u1 = rand(rows, cols);
+    u2 = rand(rows, cols);
+    r = sqrt(-2 * log(u1)) .* cos(2 * %pi * u2);
+endfunction
+
+for j = 1:length(snr_dB)
+    n_err = 0;
+    n_bits = 0;
+    
+    while n_err < 100
+        inf_bits = round(rand(1, m));
+        x = -2 * (inf_bits - 0.5); // BPSK mapping
+        
+        N0 = 1 / (10^(snr_dB(j) / 10));
+        
+        // Rayleigh fading (complex)
+        h = (randn_gauss(1, length(x)) + %i * randn_gauss(1, length(x))) / sqrt(2);
+        
+        // AWGN noise (complex)
+        noise = sqrt(N0 / 2) * (randn_gauss(1, length(x)) + %i * randn_gauss(1, length(x)));
+        
+        // Received signal
+        y = h .* x + noise;
+        y = y ./ h; // Equalization
+        
+        // Decision on real part
+        est_bits = real(y) < 0;
+        
+        diff = inf_bits - est_bits;
+        n_err = n_err + sum(abs(diff));
+        n_bits = n_bits + length(inf_bits);
+    end
+    
+    BER(j) = n_err / n_bits;
+end
+
+// Theoretical BERs
+snr = 10 .^ (snr_dB / 10);
+theoryBer = 0.5 * (1 - sqrt(snr ./ (snr + 1)));
+theoryBerAWGN = 0.5 * erfc(sqrt(10 .^ (snr_dB / 10)));
+
+// === Plot Section ===
+clf;
+a = gca();
+a.auto_clear = "off"; // allows multiple plots on same axes
+
+// Rayleigh theoretical - blue line
+semilogy(snr_dB, theoryBer, 'b-', 'LineWidth', 2);
+
+// Rayleigh simulated - red dots
+semilogy(snr_dB, BER, 'r.', 'MarkerSize', 8);
+
+// AWGN theoretical - black line with square markers
+plot(snr_dB, theoryBerAWGN, 'ks-', 'LineWidth', 2, 'MarkerSize', 6);
+
+// Set axis limits like MATLAB
+a.data_bounds = [0, 1e-5; 20, 0.5];
+
+legend(['Rayleigh Theoretical'; 'Rayleigh Simulated'; 'AWGN Theoretical']);
+xgrid();
+xlabel('SNR (dB)');
+ylabel('BER');
+xtitle('BER vs SNR for BPSK over Rayleigh and AWGN Channels');
+    </pre>
+    </div>
+
+    <!-- Experiment 3 -->
+    <div class="box">
+        <h2>Experiment 3 – Log-Distance Path Loss with Shadowing</h2>
+        <button onclick="copyCode('exp3')">Copy Answer</button>
+        <pre class="code" id="exp3">
+clc;
+clear;
+close;
+
+// Input reference distance
+d0 = input("Enter the reference distance (in meters): ");
+
+// Distance range (1 km to 20 km)
+d = 1000:1000:20000;
+
+// Path loss exponent for 12 environments
+n = [2.2 1.8 3.0 2.4 2.6 2.0 2.1 1.8 1.6 3.0 3.1 3.3];
+
+// Frequencies in MHz
+f = [914 914 1500 900 1900 1300 4000 1300 1300 900 4000 1300];
+
+// Standard deviation of shadowing (in dB)
+sigma = [8.7 5.2 7.0 9.6 14.1 3.0 7.0 6.0 5.8 7.0 9.7 6.8];
+
+// Preallocate variables
+lambda = zeros(1, 12);
+PL_d0 = zeros(1, 12);
+X = zeros(1, 12);
+PL = zeros(12, length(d));
+
+// --- MAIN CALCULATION ---
+for i = 1:12
+    // Calculate wavelength (in meters)
+    lambda(i) = 3e8 / (f(i) * 1e6);
+    
+    // Free space path loss (in dB) at reference distance
+    PL_d0(i) = -10 * log10((lambda(i)^2) / ((4 * %pi * d0)^2));
+    
+    // Random shadowing term (Gaussian)
+    X(i) = sigma(i) * rand(1, "normal");
+    
+    // Compute total path loss for all distances
+    for j = 1:length(d)
+        PL(i,j) = PL_d0(i) + 10 * n(i) * log10(d(j)/d0) + X(i);
+    end
+end
+
+// --- DISPLAY RESULTS ---
+disp("Path Loss Matrix (PL in dB):");
+disp(PL);
+
+// --- PLOT RESULTS ---
+// Only plot a few representative environments to avoid clutter
+clf();
+plot(d, PL(1,:), '-o', ...
+     d, PL(2,:), '-x', ...
+     d, PL(3,:), '-s', ...
+     d, PL(4,:), '-d', ...
+     d, PL(5,:), '-^');
+
+xlabel("Distance (m)");
+ylabel("Path Loss (dB)");
+title("LOG-DISTANCE PATH LOSS INDOOR PROPAGATION MODEL (WITH SHADOWING EFFECT)");
+legend(["Retail Store", "Grocery Store", "Office Hard Partition", "Office Soft Partition", "Textile/Chemical"], "in_upper_left");
+xgrid();
+    </pre>
+    </div>
+
+    <!-- Experiment 4 -->
+    <div class="box">
+        <h2>Experiment 4 – MRC Diversity (Rayleigh)</h2>
+        <button onclick="copyCode('exp4')">Copy Answer</button>
+        <pre class="code" id="exp4">
+clc;
+clear;
+close;
+
+//////////////////////// Initialization ////////////////////////
+N = 5;                   // Number of trials
+m = 10^6;                // Number of bits in each trial
+ip = rand(1, m) > 0.5;   // Generated bits
+BPSK = 2*ip - 1;         // BPSK symbols
+
+snr_dB = 0:1:15;         // Range of SNR values (in dB)
+snr = 10.^(snr_dB/10);   // SNR in linear scale
+
+L = 2;                   // Number of diversity branches
+
+// Theoretical BER value for MRC combiner with 2 diversity branches
+p_R_MRC = 0.5 - 0.5 * (1 + 1 ./ snr).^(-0.5);
+ber_MRC_ana = (p_R_MRC.^2) .* (1 + 2 * (1 - p_R_MRC));
+
+/////////////////////// Receive MRC one by two system ///////////////////////
+n_err = zeros(1, length(snr_dB)); // Initialize bit error counter
+
+for p = 1:N
+    for q = 1:length(snr_dB)
+        // Generate white noise samples (complex)
+        No = (1/sqrt(2)) * (rand(L, m, "normal") + %i * rand(L, m, "normal"));
+        
+        // Generate Rayleigh channel coefficients
+        h = (1/sqrt(2)) * (rand(L, m, "normal") + %i * rand(L, m, "normal"));
+        
+        // Generate array of symbols for all branches
+        symbol = ones(L, 1) * BPSK;
+        
+        // Received vector
+        rec_vector = h .* symbol + 10^(-snr_dB(q)/20) * No;
+        
+        // MRC decision metric
+        dec_metric = sum(conj(h) .* rec_vector, "r") ./ sum(h .* conj(h), "r");
+        
+        // Estimated bits
+        ip_hat = real(dec_metric) > 0;
+        
+        // Count bit errors
+        n_err(q) = n_err(q) + sum(ip_hat <> ip);
+    end
+end
+
+// Compute simulated BER
+ber_MRC_sim = n_err ./ (N * m);
+
+/////////////////////// Plot results ///////////////////////
+scf(0);
+semilogy(snr_dB, ber_MRC_ana, 'b-', 'LineWidth', 2);
+plot(snr_dB, ber_MRC_sim, 'ro-', 'LineWidth', 2);
+xlabel("SNR (dB)");
+ylabel("Bit Error Rate (BER)");
+title("BER Performance of BPSK over Rayleigh Fading with MRC (L=2)");
+legend(["Analytical BER", "Simulated BER"], "in_lower_right");
+xgrid();clc;
+clear;
+close;
+
+//////////////////////// Initialization ////////////////////////
+N = 5;                   // Number of trials
+m = 10^6;                // Number of bits in each trial
+ip = rand(1, m) > 0.5;   // Generated bits
+BPSK = 2*ip - 1;         // BPSK symbols
+
+snr_dB = 0:1:15;         // Range of SNR values (in dB)
+snr = 10.^(snr_dB/10);   // SNR in linear scale
+
+L = 2;                   // Number of diversity branches
+
+// Theoretical BER value for MRC combiner with 2 diversity branches
+p_R_MRC = 0.5 - 0.5 * (1 + 1 ./ snr).^(-0.5);
+ber_MRC_ana = (p_R_MRC.^2) .* (1 + 2 * (1 - p_R_MRC));
+
+/////////////////////// Receive MRC one by two system ///////////////////////
+n_err = zeros(1, length(snr_dB)); // Initialize bit error counter
+
+for p = 1:N
+    for q = 1:length(snr_dB)
+        // Generate white noise samples (complex)
+        No = (1/sqrt(2)) * (rand(L, m, "normal") + %i * rand(L, m, "normal"));
+        
+        // Generate Rayleigh channel coefficients
+        h = (1/sqrt(2)) * (rand(L, m, "normal") + %i * rand(L, m, "normal"));
+        
+        // Generate array of symbols for all branches
+        symbol = ones(L, 1) * BPSK;
+        
+        // Received vector
+        rec_vector = h .* symbol + 10^(-snr_dB(q)/20) * No;
+        
+        // MRC decision metric
+        dec_metric = sum(conj(h) .* rec_vector, "r") ./ sum(h .* conj(h), "r");
+        
+        // Estimated bits
+        ip_hat = real(dec_metric) > 0;
+        
+        // Count bit errors
+        n_err(q) = n_err(q) + sum(ip_hat <> ip);
+    end
+end
+
+// Compute simulated BER
+ber_MRC_sim = n_err ./ (N * m);
+
+/////////////////////// Plot results ///////////////////////
+scf(0);
+semilogy(snr_dB, ber_MRC_ana, 'b-', 'LineWidth', 2);
+plot(snr_dB, ber_MRC_sim, 'ro-', 'LineWidth', 2);
+xlabel("SNR (dB)");
+ylabel("Bit Error Rate (BER)");
+title("BER Performance of BPSK over Rayleigh Fading with MRC (L=2)");
+legend(["Analytical BER", "Simulated BER"], "in_lower_right");
+xgrid();
+
+    </pre>
+    </div>
+
+    <!-- Experiment 5 -->
+    <div class="box">
+        <h2>Experiment 5 – EGC Diversity (Rayleigh)</h2>
+        <button onclick="copyCode('exp5')">Copy Answer</button>
+        <pre class="code" id="exp5">
+clc; clear; close;
+
+// Number of bits
+m = 1000;
+
+// SNR range
+snr_dB = 0:1:20;
+BER = zeros(1, length(snr_dB));      // Simulated Rayleigh EGC
+
+for j = 1:length(snr_dB)
+    n_err = 0;
+    n_bits = 0;
+    while n_err < 100
+        // Info bits and BPSK mapping
+        inf_bits = round(rand(1, m));
+        x = -2*(inf_bits - 0.5);
+
+        // Noise variance
+        N0 = 1 / (10^(snr_dB(j)/10));
+
+        // Rayleigh fading channels (abs of complex Gaussian)
+        h1 = sqrt(0.5) * abs(rand(1, m) + %i * rand(1, m));
+        h2 = sqrt(0.5) * abs(rand(1, m) + %i * rand(1, m));
+
+        // AWGN noise (absolute value, as per your approach)
+        n1 = sqrt(N0/2) * abs(rand(1, m) + %i * rand(1, m));
+        n2 = sqrt(N0/2) * abs(rand(1, m) + %i * rand(1, m));
+
+        // Received signals
+        y1 = h1 .* x + n1;
+        y2 = h2 .* x + n2;
+
+        // Equal Gain Combining
+        y_equal = 0.5 * (y1 + y2);
+
+        // Detector
+        est_bits = (y_equal < 0);
+
+        // Count errors
+        diff = abs(inf_bits - est_bits);
+        n_err = n_err + sum(diff);
+        n_bits = n_bits + m;
+    end
+    BER(j) = n_err / n_bits;
+end
+
+// Reference data1 curve for comparison (adjust this as needed)
+data1 = 0.12 * exp(-snr_dB/5.8) + 0.002;
+
+// --- PLOT FORMATTING & SUBPLOTS ---
+scf();
+subplot(1,2,1);
+semilogy(snr_dB, BER, 'ro-', "LineWidth", 2, "MarkerSize", 6);
+xlabel("SNR (dB)");
+ylabel("BER");
+title("Experiment No 4");
+legend("Rayleigh EGC Simulated", "location", "upper right");
+xgrid();
+
+subplot(1,2,2);
+semilogy(snr_dB, BER, 'ro-', "LineWidth", 2, "MarkerSize", 6);
+semilogy(snr_dB, data1, 'kd-', "LineWidth", 2, "MarkerSize", 4);
+xlabel("SNR (dB)");
+ylabel("BER");
+title("Experiment No 4");
+legend("Rayleigh EGC Simulated", "data1", "location", "upper right");
+xgrid();
+
+</pre>
+    </div>
