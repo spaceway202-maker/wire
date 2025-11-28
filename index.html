@@ -474,3 +474,246 @@ xgrid();
 
 </pre>
     </div>
+<div class="box">
+        <h2>Exp1</h2>
+        <button onclick="copyCode('exp6')">Copy Answer</button>
+        <pre class="code" id="exp6">
+            def is_balanced(expr):
+    stack = []
+    pairs = {')':'(', ']':'[', '}':'{'}
+
+    for ch in expr:
+        if ch in "([{":
+            stack.append(ch)
+        elif ch in ")]}":
+            if not stack or stack[-1] != pairs[ch]:
+                return False
+            stack.pop()
+    return len(stack) == 0
+
+expr = "{[()]}"
+print("Balanced" if is_balanced(expr) else "Not Balanced")
+        </pre>
+    </div>
+
+            <div class="box">
+        <h2>Exp2</h2>
+        <button onclick="copyCode('exp7')">Copy Answer</button>
+        <pre class="code" id="exp7">
+            from collections import deque
+
+class Stack:
+    def _init_(self):
+        self.q1 = deque()
+        self.q2 = deque()
+
+    def push(self, x):
+        self.q2.append(x)
+        while self.q1:
+            self.q2.append(self.q1.popleft())
+        self.q1, self.q2 = self.q2, self.q1
+
+    def pop(self):
+        if not self.q1:
+            return "Empty"
+        return self.q1.popleft()
+
+s = Stack()
+s.push(10)
+s.push(20)
+s.push(30)
+print(s.pop())
+        </pre>
+    </div>
+    <div class="box">
+        <h2>Exp2</h2>
+        <button onclick="copyCode('exp8')">Copy Answer</button>
+        <pre class="code" id="exp8">
+           class Node:
+    def _init_(self, data):
+        self.data = data
+        self.next = None
+
+def reverse(head):
+    prev = None
+    curr = head
+    while curr:
+        nxt = curr.next
+        curr.next = prev
+        prev = curr
+        curr = nxt
+    return prev
+
+def print_list(head):
+    while head:
+        print(head.data, end=" ")
+        head = head.next
+
+# Create list
+head = Node(1)
+head.next = Node(2)
+head.next.next = Node(3)
+
+head = reverse(head)
+print_list(head)
+        </pre>
+    </div>
+    <div class="box">
+        <h2>Exp3</h2>
+        <button onclick="copyCode('exp9')">Copy Answer</button>
+        <pre class="code" id="exp9">
+            graph = {
+    'A': ['B','C'],
+    'B': ['D','E'],
+    'C': ['F'],
+    'D': [],
+    'E': [],
+    'F': []
+}
+
+visited = set()
+
+def dfs(node):
+    if node not in visited:
+        print(node, end=" ")
+        visited.add(node)
+        for neighbour in graph[node]:
+            dfs(neighbour)
+
+dfs('A')
+        </pre>
+    </div>
+    <div class="box">
+        <h2>Exp4</h2>
+        <button onclick="copyCode('exp10')">Copy Answer</button>
+        <pre class="code" id="exp10">
+            import heapq
+
+arr = [5, 3, 8, 1, 2]
+
+# Min heap
+min_heap = arr[:]
+heapq.heapify(min_heap)
+
+# Max heap (store negative values)
+max_heap = [-x for x in arr]
+heapq.heapify(max_heap)
+
+print("Min Heap:", min_heap)
+print("Max Heap:", [-x for x in max_heap])
+        </pre>
+    </div>
+    <div class="box">
+        <h2>Exp5</h2>
+        <button onclick="copyCode('exp11')">Copy Answer</button>
+        <pre class="code" id="exp11">
+            graph = {
+    'A': ['B','C'],
+    'B': ['D','E'],
+    'C': ['F'],
+    'D': [],
+    'E': [],
+    'F': []
+}
+
+visited = set()
+
+def dfs(node):
+    if node not in visited:
+        print(node, end=" ")
+        visited.add(node)
+        for neighbour in graph[node]:
+            dfs(neighbour)
+
+dfs('A')
+        </pre>
+    </div>
+    <div class="box">
+        <h2>Exp6</h2>
+        <button onclick="copyCode('exp12')">Copy Answer</button>
+        <pre class="code" id="exp12">
+            import heapq
+
+arr = [2,1,2,5,7,1,9,3,6,8,8]
+order = [2,1,8,3]
+
+freq = {}
+for num in arr:
+    freq[num] = freq.get(num, 0) + 1
+
+result = []
+
+# Elements in order array
+for x in order:
+    if x in freq:
+        result.extend([x] * freq[x])
+        del freq[x]
+
+# Remaining elements sorted using heap
+heap = list(freq.keys())
+heapq.heapify(heap)
+
+while heap:
+    x = heapq.heappop(heap)
+    result.extend([x] * freq[x])
+
+print(result)
+        </pre>
+    </div>
+    <div class="box">
+        <h2>Exp7</h2>
+        <button onclick="copyCode('exp13')">Copy Answer</button>
+        <pre class="code" id="exp13">
+            import heapq
+
+def dijkstra(graph, start):
+    dist = {node: float('inf') for node in graph}
+    dist[start] = 0
+    pq = [(0, start)]
+
+    while pq:
+        d, node = heapq.heappop(pq)
+
+        for neigh, w in graph[node]:
+            if d + w < dist[neigh]:
+                dist[neigh] = d + w
+                heapq.heappush(pq, (dist[neigh], neigh))
+
+    return dist
+
+graph = {
+    'A': [('B',1),('C',4)],
+    'B': [('C',2),('D',5)],
+    'C': [('D',1)],
+    'D': []
+}
+
+print(dijkstra(graph, 'A'))
+        </pre>
+    </div>
+    <div class="box">
+        <h2>Exp8</h2>
+        <button onclick="copyCode('exp13')">Copy Answer</button>
+        <pre class="code" id="exp13">
+            arr = [2,3,2,4,5,12,2,3,3,3,12]
+
+freq = {}
+for x in arr:
+    freq[x] = freq.get(x, 0) + 1
+
+result = sorted(arr, key=lambda x: (-freq[x], x))
+print(result)
+        </pre>
+    </div>
+    <div class="box">
+        <h2>Exp9</h2>
+        <button onclick="copyCode('exp14')">Copy Answer</button>
+        <pre class="code" id="exp14">
+            def sum_n(n):
+    if n == 0:
+        return 0
+    return n + sum_n(n-1)
+
+print(sum_n(5))
+        </pre>
+    </div>
